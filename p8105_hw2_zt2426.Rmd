@@ -33,7 +33,7 @@ subway <- read_csv(
 dim(subway)
 ```
 
-Each row is one subway entrance or exit. The dataset includes the line, station name, latitude and longitude, train routes, whether entry is allowed, whether vending is available, entrance type, and ADA compliance. I first cleaned the column names and kept the variables needed for this question. Then I changed entry from YES/NO to TRUE/FALSE, so it is a logical variable. I also changed all route columns to character so I can combine them later. After cleaning, the dataset has r nrow(subway) rows and r ncol(subway) columns. The data are not tidy yet because the routes are in separate columns.
+Each row is one subway entrance or exit. The dataset includes the line, station name, latitude and longitude, train routes, whether entry is allowed, whether vending is available, entrance type, and ADA compliance. I first cleaned the column names and kept the variables needed for this question. Then I changed entry from YES/NO to TRUE/FALSE, so it is a logical variable. I also changed all route columns to character so I can combine them later. After cleaning, the dataset has 1868 rows and 19 columns. The data are not tidy yet because the routes are in separate columns.
 
 ## Count stations and calculate the entry proportion
 
