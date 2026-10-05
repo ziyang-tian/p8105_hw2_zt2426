@@ -1,0 +1,344 @@
+---
+title: "P8105 Homework 2"
+author: "Ziyang Tian (zt2426)"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+
+library(tidyverse)
+library(readxl)
+```
+
+# Problem 1
+
+## Import and clean the subway data
+
+```{r subway-import}
+subway <- read_csv(
+  "data/subway.csv",
+  show_col_types = FALSE
+) %>%
+  janitor::clean_names() %>%
+  select(
+    line, station_name, station_latitude, station_longitude,
+    starts_with("route"), entry, vending, entrance_type, ada
+  ) %>%
+  mutate(
+    entry = entry == "YES",
+    across(starts_with("route"), as.character)
+  )
+
+dim(subway)
+```
+
+Each row is one subway entrance or exit. The dataset includes the line, station name, latitude and longitude, train routes, whether entry is allowed, whether vending is available, entrance type, and ADA compliance. I first cleaned the column names and kept the variables needed for this question. Then I changed entry from YES/NO to TRUE/FALSE, so it is a logical variable. I also changed all route columns to character so I can combine them later. After cleaning, the dataset has r nrow(subway) rows and r ncol(subway) columns. The data are not tidy yet because the routes are in separate columns.
+
+## Count stations and calculate the entry proportion
+
+```{r subway-summary}
+stations <- subway %>%
+  distinct(line, station_name, ada)
+
+no_vending <- subway %>%
+  filter(vending == "NO")
+
+subway_summary <- tibble(
+  distinct_stations = nrow(stations),
+  ada_stations = sum(stations$ada),
+  no_vending_entrances_exits = nrow(no_vending),
+  no_vending_allow_entry = sum(no_vending$entry),
+  entry_proportion = mean(no_vending$entry)
+)
+
+knitr::kable(subway_summary, digits = 4)
+```
+
+I counted stations by both line and station name. There are
+`r nrow(stations)` different stations, and `r sum(stations$ada)` of them are
+ADA compliant. There are `r nrow(no_vending)` entrances and exits without
+vending. Of these, `r sum(no_vending$entry)` allow entry. So the proportion is
+`r round(mean(no_vending$entry), 4)`, or
+`r round(100 * mean(no_vending$entry), 2)`%.
+
+## Reformat the routes and examine the A train
+
+```{r subway-routes}
+subway_long <- subway %>%
+  pivot_longer(
+    cols = starts_with("route"),
+    names_to = "route_number",
+    names_prefix = "route",
+    names_transform = list(route_number = as.integer),
+    values_to = "route_name",
+    values_drop_na = TRUE
+  )
+
+a_stations <- subway_long %>%
+  filter(route_name == "A") %>%
+  distinct(line, station_name, ada)
+
+a_summary <- tibble(
+  a_train_stations = nrow(a_stations),
+  a_train_ada_stations = sum(a_stations$ada)
+)
+
+knitr::kable(a_summary)
+```
+
+I used pivot_longer() to put the route columns into two variables:
+route_number and route_name. For example, route1 becomes route_number 1,
+and its train label goes into route_name. After this step, each row is one
+train route for an entrance or exit. I selected the A train and counted
+stations by line and station name. There are `r nrow(a_stations)` stations
+that serve the A train, and `r sum(a_stations$ada)` of them are ADA compliant.
+
+# Problem 2
+
+## Import and clean the three Trash Wheel sheets
+
+```{r trash-import}
+mr_trash <- read_excel(
+  "data/trash_wheel.xlsx",
+  sheet = "Mr. Trash Wheel",
+  range = "A2:N710"
+) %>%
+  janitor::clean_names() %>%
+  filter(!is.na(dumpster)) %>%
+  mutate(
+    year = as.integer(year),
+    date = as.Date(date),
+    sports_balls = as.integer(round(sports_balls)),
+    wheel = "Mr. Trash Wheel"
+  )
+
+prof_trash <- read_excel(
+  "data/trash_wheel.xlsx",
+  sheet = "Professor Trash Wheel",
+  range = "A2:M135"
+) %>%
+  janitor::clean_names() %>%
+  filter(!is.na(dumpster)) %>%
+  mutate(
+    year = as.integer(year),
+    date = as.Date(date),
+    wheel = "Professor Trash Wheel"
+  )
+
+gwynnda <- read_excel(
+  "data/trash_wheel.xlsx",
+  sheet = "Gwynns Falls Trash Wheel",
+  range = "A2:L352"
+) %>%
+  janitor::clean_names() %>%
+  filter(!is.na(dumpster)) %>%
+  mutate(
+    year = as.integer(year),
+    date = as.Date(date),
+    wheel = "Gwynnda"
+  )
+
+trash <- bind_rows(mr_trash, prof_trash, gwynnda)
+
+trash %>%
+  count(wheel) %>%
+  knitr::kable()
+
+dim(trash)
+```
+
+I read the three sheets from row 2, which contains the column names, and
+selected only the data columns. I removed rows with missing dumpster numbers,
+including the total rows. Then I cleaned the column names and changed year to
+an integer and date to a date variable. For Mr. Trash Wheel, I rounded
+sports_balls and changed it to an integer. I added a wheel column to show
+which Trash Wheel each record comes from. Then I used bind_rows() to combine
+the three datasets. Some sheets do not have all the variables, so those
+values are NA after combining. Gwynnda has two records numbered 21 on
+different dates. I kept both because they are different collection records.
+
+## Summarize the combined data
+
+```{r trash-summary}
+prof_weight <- trash %>%
+  filter(wheel == "Professor Trash Wheel") %>%
+  summarize(total_weight = sum(weight_tons, na.rm = TRUE)) %>%
+  pull(total_weight)
+
+gwynnda_cigarettes <- trash %>%
+  filter(wheel == "Gwynnda", year == 2022, month == "June") %>%
+  summarize(total_cigarettes = sum(cigarette_butts, na.rm = TRUE)) %>%
+  pull(total_cigarettes)
+
+trash_summary <- tibble(
+  observations = nrow(trash),
+  variables = ncol(trash),
+  professor_weight_tons = prof_weight,
+  gwynnda_june_2022_cigarette_butts = gwynnda_cigarettes
+)
+
+knitr::kable(trash_summary, digits = 2)
+```
+
+The combined dataset has `r nrow(trash)` rows and `r ncol(trash)` columns.
+Each row shows data for one dumpster collection. There are
+`r nrow(mr_trash)` records from Mr. Trash Wheel,
+`r nrow(prof_trash)` from Professor Trash Wheel, and `r nrow(gwynnda)` from
+Gwynnda. The main variables include the collection date, weight in tons,
+volume in cubic yards, numbers of plastic bottles and cigarette butts, and
+wheel name. The data are tidy because each row is one collection record and
+each column is one variable. In the available data, Professor Trash Wheel
+collected `r round(prof_weight, 2)` tons of trash in total. Gwynnda collected
+`r format(gwynnda_cigarettes, big.mark = ",", scientific = FALSE, trim = TRUE)`
+cigarette butts in June 2022.
+
+# Problem 3
+
+## Import and clean the baseline data
+
+```{r baseline-import}
+baseline_raw <- read_csv(
+  "data/mci_baseline.csv",
+  skip = 1,
+  na = c("", "NA", "."),
+  show_col_types = FALSE
+) %>%
+  janitor::clean_names() %>%
+  rename(baseline_age = current_age) %>%
+  mutate(
+    sex = factor(sex, levels = c(0, 1), labels = c("Female", "Male")),
+    apoe4 = factor(
+      apoe4,
+      levels = c(0, 1),
+      labels = c("Non-carrier", "Carrier")
+    )
+  )
+
+baseline <- baseline_raw %>%
+  filter(is.na(age_at_onset) | age_at_onset > baseline_age)
+
+women <- baseline %>%
+  filter(sex == "Female")
+
+baseline_summary <- tibble(
+  recruited = nrow(baseline_raw),
+  eligible = nrow(baseline),
+  excluded = nrow(baseline_raw) - nrow(baseline),
+  developed_mci = sum(!is.na(baseline$age_at_onset)),
+  mean_baseline_age = mean(baseline$baseline_age),
+  women_apoe4_proportion = mean(women$apoe4 == "Carrier")
+)
+
+knitr::kable(baseline_summary, digits = 4)
+```
+
+I skipped the first row because it contains descriptions. The second row
+contains the column names. I treated dots in age_at_onset as NA and cleaned
+the column names. I changed sex to Female or Male and APOE4 status to Carrier
+or Non-carrier, and stored both as factors. Each row is one participant.
+I removed people whose MCI onset age was at or before their baseline age.
+I kept people with missing onset age because the file says they did not
+develop MCI during follow-up.
+
+There are `r nrow(baseline_raw)` participants in the original baseline file.
+I removed `r nrow(baseline_raw) - nrow(baseline)` people who already had MCI
+at baseline, so `r nrow(baseline)` people remain in the study sample.
+Among these people, `r sum(!is.na(baseline$age_at_onset))` developed MCI during
+follow-up. The average baseline age for all `r nrow(baseline)` people is
+`r round(mean(baseline$baseline_age), 2)` years. There are `r nrow(women)`
+women in this sample, and `r sum(women$apoe4 == "Carrier")` of them are APOE4
+carriers. So the proportion is `r round(mean(women$apoe4 == "Carrier"), 2)`,
+or `r round(100 * mean(women$apoe4 == "Carrier"), 2)`%.
+
+## Import and tidy the amyloid data
+
+```{r amyloid-import}
+amyloid_wide <- read_csv(
+  "data/mci_amyloid.csv",
+  skip = 1,
+  na = c("", "NA"),
+  show_col_types = FALSE
+) %>%
+  janitor::clean_names() %>%
+  rename(id = study_id, time_0 = baseline)
+
+amyloid <- amyloid_wide %>%
+  pivot_longer(
+    cols = starts_with("time_"),
+    names_to = "year",
+    names_prefix = "time_",
+    names_transform = list(year = as.integer),
+    values_to = "amyloid_ratio"
+  )
+
+dim(amyloid_wide)
+dim(amyloid)
+```
+
+I skipped the descriptive first row, cleaned the column names, renamed the
+participant ID to id, and renamed the baseline measurement to time_0. I put
+the five visit columns into year and amyloid_ratio, with year equal to 0, 2,
+4, 6, or 8. The file contains `r nrow(amyloid_wide)` participants. The tidy
+dataset has `r nrow(amyloid)` rows and `r ncol(amyloid)` columns, with one row
+per participant and scheduled visit. I kept missing biomarker values as NA.
+
+## Check participants found in only one dataset
+
+```{r participant-matches}
+raw_baseline_only <- anti_join(baseline_raw, amyloid_wide, by = "id")
+raw_amyloid_only <- anti_join(amyloid_wide, baseline_raw, by = "id")
+
+baseline_only <- anti_join(baseline, amyloid_wide, by = "id")
+amyloid_only <- anti_join(amyloid_wide, baseline, by = "id")
+
+match_summary <- tibble(
+  comparison = c("Before eligibility filtering", "After eligibility filtering"),
+  baseline_only = c(nrow(raw_baseline_only), nrow(baseline_only)),
+  amyloid_only = c(nrow(raw_amyloid_only), nrow(amyloid_only))
+)
+
+knitr::kable(match_summary)
+
+baseline_only %>%
+  select(id) %>%
+  knitr::kable()
+
+amyloid_only %>%
+  select(id) %>%
+  knitr::kable()
+```
+
+Before applying the inclusion criterion,
+`r nrow(raw_baseline_only)` participants appear only in the baseline file and
+`r nrow(raw_amyloid_only)` only in the amyloid file. After removing the four
+ineligible baseline participants, `r nrow(baseline_only)` eligible
+participants appear only in baseline and `r nrow(amyloid_only)` only in
+amyloid. The latter group includes the four excluded participants and the
+12 IDs absent from the original baseline file. I used participant IDs for
+matching rather than row positions.
+
+## Combine the datasets and export the result
+
+```{r combine-export}
+mci <- inner_join(baseline, amyloid, by = "id") %>%
+  arrange(id, year)
+
+combined_summary <- tibble(
+  participants = n_distinct(mci$id),
+  observations = nrow(mci),
+  variables = ncol(mci)
+)
+
+knitr::kable(combined_summary)
+
+write_csv(mci, "data/mci_combined.csv")
+```
+
+The combined dataset retains only eligible participants who appear in both
+datasets. It includes `r n_distinct(mci$id)` participants,
+`r nrow(mci)` rows, and `r ncol(mci)` columns. Each participant has five
+scheduled visit rows. The variables include participant ID, baseline age,
+sex, education, APOE4 carrier status, MCI onset age, visit year, and amyloid
+ratio. Baseline information is repeated across visits, and missing amyloid
+values remain NA. I saved the result as data/mci_combined.csv.
