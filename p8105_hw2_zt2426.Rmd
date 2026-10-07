@@ -250,7 +250,7 @@ Among these people, `r sum(!is.na(baseline$age_at_onset))` developed MCI during
 follow-up. The average baseline age for all `r nrow(baseline)` people is
 `r round(mean(baseline$baseline_age), 2)` years. There are `r nrow(women)`
 women in this sample, and `r sum(women$apoe4 == "Carrier")` of them are APOE4
-carriers. So the proportion is `r round(mean(women$apoe4 == "Carrier"), 2)`,
+carriers, so the proportion is `r round(mean(women$apoe4 == "Carrier"), 2)`,
 or `r round(100 * mean(women$apoe4 == "Carrier"), 2)`%.
 
 ## Import and tidy the amyloid data
@@ -344,4 +344,5 @@ scheduled visit rows. The variables include participant ID, baseline age,
 sex, education, APOE4 carrier status, MCI onset age, visit year, and amyloid
 ratio. Baseline information is repeated across visits, and missing amyloid
 values remain NA. I saved the result as data/mci_combined.csv.
+
 
