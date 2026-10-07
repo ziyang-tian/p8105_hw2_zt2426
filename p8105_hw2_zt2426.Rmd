@@ -94,6 +94,7 @@ train route for an entrance or exit. I selected the A train and counted
 stations by line and station name. There are `r nrow(a_stations)` stations
 that serve the A train, and `r sum(a_stations$ada)` of them are ADA compliant.
 
+
 # Problem 2
 
 ## Import and clean the three Trash Wheel sheets
@@ -102,7 +103,7 @@ that serve the A train, and `r sum(a_stations$ada)` of them are ADA compliant.
 mr_trash <- read_excel(
   "data/trash_wheel.xlsx",
   sheet = "Mr. Trash Wheel",
-  range = "A2:N710"
+  range = "A2:N743"
 ) %>%
   janitor::clean_names() %>%
   filter(!is.na(dumpster)) %>%
@@ -116,7 +117,8 @@ mr_trash <- read_excel(
 prof_trash <- read_excel(
   "data/trash_wheel.xlsx",
   sheet = "Professor Trash Wheel",
-  range = "A2:M135"
+  range = "A2:M140",
+na = c("", "NA", "dive")
 ) %>%
   janitor::clean_names() %>%
   filter(!is.na(dumpster)) %>%
@@ -128,8 +130,8 @@ prof_trash <- read_excel(
 
 gwynnda <- read_excel(
   "data/trash_wheel.xlsx",
-  sheet = "Gwynns Falls Trash Wheel",
-  range = "A2:L352"
+  sheet = "Gwynnda the Good Wheel of the W",
+  range = "A2:L395"
 ) %>%
   janitor::clean_names() %>%
   filter(!is.na(dumpster)) %>%
@@ -342,3 +344,4 @@ scheduled visit rows. The variables include participant ID, baseline age,
 sex, education, APOE4 carrier status, MCI onset age, visit year, and amyloid
 ratio. Baseline information is repeated across visits, and missing amyloid
 values remain NA. I saved the result as data/mci_combined.csv.
+
